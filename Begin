@@ -1,0 +1,82 @@
+from  tensorflow.python.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.python.keras.models import Sequential
+from tensorflow.python.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.python.keras.layers import Activation, Dropout, Flatten, Dense
+import numpy as np
+
+
+# Каталог с данными для обучения
+gesture_dir = 'gesture'
+
+# Каталог с данными для тестирования
+test_dir = 'test'
+
+# Размеры изображения
+img_width, img_height = 100, 100
+# Размерность тензора на основе изображения для входных данных в нейронную сеть
+# backend Tensorflow, channels_last
+input_shape = (img_width, img_height, 3)
+# Количество эпох
+epochs = 25
+# Размер мини-выборки
+batch_size = 7
+# Количество изображений для обучения
+nb_gesture_samples = 1477
+
+# Количество изображений для тестирования
+nb_test_samples = 0
+
+model = Sequential()
+model.add(Conv2D(32, (3, 3), input_shape=input_shape))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+model.add(Conv2D(32, (3, 3)))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+model.add(Conv2D(64, (3, 3)))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+model.add(Flatten())
+model.add(Dense(64))
+model.add(Activation('relu'))
+model.add(Dropout(0.5))
+model.add(Dense(33))
+model.add(Activation('sigmoid'))
+
+model.compile(loss='categorical_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy'])
+
+datagen = ImageDataGenerator(rescale=1. / 255)
+
+gesture_generator = datagen.flow_from_directory(
+    gesture_dir,
+    target_size=(img_width, img_height),
+    batch_size=batch_size,
+    class_mode='categorical')
+
+test_generator = datagen.flow_from_directory(
+    test_dir,
+    target_size=(img_width, img_height),
+    batch_size=batch_size,
+    class_mode='categorical')
+
+model.fit_generator(
+    gesture_generator,
+    steps_per_epoch=nb_gesture_samples // batch_size,
+    epochs = epochs )
+
+
+scores = model.evaluate_generator(gesture_generator, nb_gesture_samples // batch_size)
+
+
+print("Аккуратность: %.2f%%" % (scores[1]*100))
+
+
+from keras.models import model_from_json
+model_json = model.to_json()
+with open("gesture.json", "w") as json_file:
+    json_file.write(model_json)
